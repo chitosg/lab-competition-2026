@@ -47,12 +47,17 @@ private:
 // ============================================================
 class PathCache {
 public:
-    PathCache(const Graph& graph, const std::vector<long long>& sources);
+    PathCache(
+        const Graph&                  graph,
+        const std::vector<long long>& sources,
+        const std::vector<Landmark>&  landmarks);
 
     PathInfo get(long long src, long long dst) const;
+    double euclidean(int landmark_a, int landmark_b) const;
 
 private:
     std::unordered_map<long long, std::unordered_map<long long, PathInfo>> cache_;
+    std::vector<std::vector<double>> euclidean_cache_;
 };
 
 } // namespace orienteering

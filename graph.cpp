@@ -4,6 +4,7 @@
 #include <limits>
 #include <queue>
 #include <utility>
+#include <cmath>
 
 namespace orienteering {
 
@@ -98,9 +99,29 @@ std::unordered_map<long long, PathInfo> Graph::dijkstra_from(long long src) cons
 // PathCache 実装
 // ============================================================
 
-PathCache::PathCache(const Graph& graph, const std::vector<long long>& sources) {
+PathCache::PathCache(
+    const Graph&                  graph,
+    const std::vector<long long>& sources,
+    const std::vector<Landmark>&  landmarks)
+{
     for (long long src : sources) {
         cache_[src] = graph.dijkstra_from(src);
+    }
+
+    euclidean_cache_.assign(
+        landmarks.size(), std::vector<double>(landmarks.size(), 0.0));
+    for (size_t i = 0; i < landmarks.size(); ++i) {
+        for (size_t j = i + 1; j < landmarks.size(); ++j) {
+            const double mean_lat = (landmarks[i].lat + landmarks[j].lat) / 2.0;
+            const double dlat = (landmarks[i].lat - landmarks[j].lat)
+                             * METERS_PER_DEGREE;
+            const double dlon = (landmarks[i].lon - landmarks[j].lon)
+                             * METERS_PER_DEGREE
+                             * std::cos(mean_lat * PI / 180.0);
+            const double distance = std::sqrt(dlat * dlat + dlon * dlon);
+            euclidean_cache_[i][j] = distance;
+            euclidean_cache_[j][i] = distance;
+        }
     }
 }
 
@@ -114,6 +135,15 @@ PathInfo PathCache::get(long long src, long long dst) const {
         return {PENALTY, PENALTY, false};
     }
     return dit->second;
+}
+
+double PathCache::euclidean(int landmark_a, int landmark_b) const {
+    if (landmark_a < 0 || landmark_b < 0
+        || landmark_a >= static_cast<int>(euclidean_cache_.size())
+        || landmark_b >= static_cast<int>(euclidean_cache_.size())) {
+        return PENALTY;
+    }
+    return euclidean_cache_[landmark_a][landmark_b];
 }
 
 } // namespace orienteering

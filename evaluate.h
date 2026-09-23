@@ -8,7 +8,7 @@
 
 namespace orienteering {
 
-// 染色体 = 選択パート（N bit）+ 順序パート（MAX_CONTROLS 個の順列）
+// 個体はランドマーク配列のインデックスを巡回順に並べた route で表す。
 using Chromosome = std::vector<int>;
 
 // 4目的関数の値
@@ -51,7 +51,7 @@ double f_map(int n_controls);
 
 double f_dist(
     const std::vector<int>&      selected_indices,
-    const std::vector<Landmark>& landmarks);
+    const PathCache&             path_cache);
 
 double f_time(double total_distance, double total_gain);
 

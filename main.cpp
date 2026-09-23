@@ -140,7 +140,7 @@ int main() {
         for (const auto& lm : landmarks) source_set.insert(lm.nearest_node);
         std::vector<long long> sources(source_set.begin(), source_set.end());
 
-        PathCache path_cache(graph, sources);
+        PathCache path_cache(graph, sources, landmarks);
 
         std::cout << "\n遺伝的アルゴリズムを実行中..." << std::endl;
         std::cout << "  個体数: " << POP_SIZE

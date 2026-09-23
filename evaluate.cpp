@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <numeric>
 
 namespace orienteering {
 
@@ -20,31 +19,20 @@ DecodedCourse decode(
 
     const int N = static_cast<int>(landmarks.size());
 
-    // 選択パートから選ばれたインデックスを取り出す
-    std::vector<int> selected;
-    for (int i = 0; i < N; ++i) {
-        if (chromosome[i] == 1) selected.push_back(i);
+    const int n_selected = static_cast<int>(chromosome.size());
+    if (n_selected < MIN_CONTROLS || n_selected > MAX_CONTROLS) return result;
+
+    std::vector<char> used(landmarks.size(), 0);
+    for (int landmark_idx : chromosome) {
+        if (landmark_idx < 0 || landmark_idx >= N || used[landmark_idx]) {
+            return result;
+        }
+        used[landmark_idx] = 1;
     }
-    const int n_selected = static_cast<int>(selected.size());
-
-    if (n_selected < MIN_CONTROLS || n_selected > MAX_CONTROLS) {
-        return result;  // 制約違反
-    }
-
-    // 順序パートのうち前 n_selected 個を使い、argsort で巡回順を決定
-    std::vector<int> order_trimmed(
-        chromosome.begin() + N,
-        chromosome.begin() + N + n_selected);
-
-    std::vector<int> indices(n_selected);
-    std::iota(indices.begin(), indices.end(), 0);
-    std::sort(indices.begin(), indices.end(),
-        [&](int a, int b) { return order_trimmed[a] < order_trimmed[b]; });
 
     // コース構築
     result.course_nodes.push_back(gate_node);
-    for (int idx : indices) {
-        int landmark_idx = selected[idx];
+    for (int landmark_idx : chromosome) {
         result.selected_indices.push_back(landmark_idx);
         result.course_nodes.push_back(landmarks[landmark_idx].nearest_node);
     }
@@ -63,11 +51,11 @@ double f_map(int n_controls) {
 // ============================================================
 // f_dist：コントロール地点が密集していないか
 // 緯度経度をメートル換算した簡易ユークリッド距離で評価
-// 各地点ペアを1回だけ計算し、地点ペア数（nC2）で平均する
+// 式(2)どおり、全地点ペアの近接ペナルティを 2/{n(n+1)} で正規化する。
 // ============================================================
 double f_dist(
     const std::vector<int>&      selected_indices,
-    const std::vector<Landmark>& landmarks)
+    const PathCache&             path_cache)
 {
     const int n = static_cast<int>(selected_indices.size());
 
@@ -76,22 +64,14 @@ double f_dist(
     }
     double penalty = 0.0;
     for (int i = 0; i < n - 1; ++i) {
-        const auto& a = landmarks[selected_indices[i]];
         for (int j = i + 1; j < n; ++j) {
-            const auto& b = landmarks[selected_indices[j]];
-
-            const double mean_lat = (a.lat + b.lat) / 2.0;
-            double dlat = (a.lat - b.lat) * METERS_PER_DEGREE;
-            double dlon = (a.lon - b.lon) * METERS_PER_DEGREE
-                          * std::cos(mean_lat * PI / 180.0);
-            double d_ij = std::sqrt(dlat * dlat + dlon * dlon);
+            const double d_ij = path_cache.euclidean(
+                selected_indices[i], selected_indices[j]);
             penalty += std::max(0.0, D_MIN - d_ij);
         }
     }
 
-    // 地点ペア数 nC2 = n*(n-1)/2 で正規化（ペア1組当たりの平均密集ペナルティ）
-    const double n_pairs = static_cast<double>(n) * (n - 1) / 2.0;
-    return penalty / n_pairs;
+    return 2.0 * penalty / (static_cast<double>(n) * (n + 1));
 }
 
 // ============================================================
@@ -173,7 +153,7 @@ EvalResult evaluate(
     res.is_valid       = true;
 
     res.objectives.f_map   = f_map(static_cast<int>(res.decoded.selected_indices.size()));
-    res.objectives.f_dist  = f_dist(res.decoded.selected_indices, landmarks);
+    res.objectives.f_dist  = f_dist(res.decoded.selected_indices, path_cache);
     res.objectives.f_time  = f_time(total_distance, total_gain);
     res.objectives.f_route = f_route(total_gain);
     res.fitness            = calc_fitness(res.objectives);

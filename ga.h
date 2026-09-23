@@ -26,14 +26,14 @@ const Chromosome& tournament_select(
     const std::vector<double>&     fitnesses,
     RNG&                           rng);
 
-// 交叉（選択パート：一様交叉 / 順序パート：OX＝順序交叉）
+// 交叉（共通コントロールを必ず継承する集合交叉）
 std::pair<Chromosome, Chromosome> crossover(
     const Chromosome& parent1,
     const Chromosome& parent2,
     int               N,
     RNG&              rng);
 
-// 突然変異（選択パート：ビット反転 / 順序パート：2点スワップ）
+// 突然変異（追加・削除・置換）
 void mutate(Chromosome& chromosome, int N, RNG& rng);
 
 // ============================================================
