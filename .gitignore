@@ -3,6 +3,7 @@
 *.dSYM/
 orienteering
 orienteering.exe
+main
 
 # 生成される出力（実行時に自動生成されるため追跡しない）
 output/
